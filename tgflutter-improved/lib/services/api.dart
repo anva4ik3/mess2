@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config.dart';
@@ -82,6 +83,17 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getMe() async {
     return (await get('/api/auth/me')) as Map<String, dynamic>;
+  }
+
+  static Future<String> uploadAvatar(File file) async {
+    final token = await getToken();
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/auth/avatar'));
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('avatar', file.path));
+    final streamed = await request.send().timeout(_timeout);
+    final response = await http.Response.fromStream(streamed);
+    final data = _handle(response);
+    return data['avatarUrl'] as String;
   }
 
   static Future<Map<String, dynamic>> updateProfile({
