@@ -3,7 +3,7 @@ class AppConfig {
   // flutter build apk --dart-define=API_URL=https://your-backend.railway.app
   static const apiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'https://your-backend.railway.app',
+    defaultValue: 'https://mess2-mess2.up.railway.app',
   );
 
   static String get wsUrl {
