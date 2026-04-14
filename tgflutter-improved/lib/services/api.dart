@@ -42,7 +42,13 @@ class ApiService {
   }
 
   static dynamic _handle(http.Response r) {
-    final data = jsonDecode(utf8.decode(r.bodyBytes));
+    final body = utf8.decode(r.bodyBytes);
+    dynamic data;
+    try {
+      data = jsonDecode(body);
+    } catch (_) {
+      throw ApiException('Ошибка сервера (${r.statusCode})', r.statusCode);
+    }
     if (r.statusCode >= 200 && r.statusCode < 300) return data;
     throw ApiException(data['error'] ?? 'Ошибка сервера', r.statusCode);
   }
