@@ -4,28 +4,11 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
-        localProperties.load(reader)
-    }
-}
-
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-if (flutterVersionCode == null) flutterVersionCode = '1'
-
-def flutterVersionName = localProperties.getProperty('flutter.versionName')
-if (flutterVersionName == null) flutterVersionName = '1.0'
-
 android {
     namespace "com.example.messenger"
-    // Используем фиксированную версию для стабильности сборки в облаке
-    compileSdk 34 
-    ndkVersion flutter.ndkVersion
+    [span_1](start_span)compileSdk 34 // Фиксируем версию[span_1](end_span)
 
     compileOptions {
-        // Обновляем до Java 17 для совместимости с GitHub Actions
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
@@ -34,29 +17,20 @@ android {
         jvmTarget = '17'
     }
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-
     defaultConfig {
         applicationId "com.example.messenger"
-        // Устанавливаем актуальные версии SDK
         minSdk 21
         targetSdk 34
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
-        multiDexEnabled true
+        versionCode 1
+        versionName "1.0"
+        [span_2](start_span)multiDexEnabled true[span_2](end_span)
     }
 
     buildTypes {
         release {
-            // Для первой сборки оставляем debug-подпись, чтобы не настраивать ключи сейчас
-            signingConfig signingConfigs.debug
+            [span_3](start_span)signingConfig signingConfigs.debug // Пока используем debug-ключ[span_3](end_span)
             minifyEnabled false
             shrinkResources false
-        }
-        debug {
-            signingConfig signingConfigs.debug
         }
     }
 }
