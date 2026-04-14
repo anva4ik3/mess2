@@ -4,11 +4,14 @@ import nodemailer from 'nodemailer';
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.resend.com',
   port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: false,
+  secure: parseInt(process.env.SMTP_PORT || '465') === 465,
   auth: {
     user: process.env.SMTP_USER || 'resend',
     pass: process.env.SMTP_PASS || '',
   },
+  connectionTimeout: 5000,
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
 });
 
 export function generateOTP(): string {
@@ -28,25 +31,25 @@ export async function sendOTP(email: string): Promise<string> {
   const smtpConfigured =
     process.env.SMTP_PASS && process.env.SMTP_PASS !== 're_your_api_key_here';
 
+  // Отправляем email В ФОНЕ — не блокируем ответ клиенту
   if (smtpConfigured) {
-    try {
-      await transporter.sendMail({
-        from: process.env.FROM_EMAIL || 'noreply@messenger.app',
-        to: email,
-        subject: 'Код подтверждения',
-        html: `
-          <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #2AABEE;">Ваш код подтверждения</h2>
-            <p style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1a2e; margin: 20px 0;">${code}</p>
-            <p style="color: #666;">Код действителен 10 минут. Никому не сообщайте его.</p>
-          </div>
-        `,
-      });
-    } catch (err) {
-      console.error('[OTP] Email send failed:', err);
-    }
+    transporter.sendMail({
+      from: process.env.FROM_EMAIL || 'noreply@messenger.app',
+      to: email,
+      subject: 'Код подтверждения',
+      html: `
+        <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2AABEE;">Ваш код подтверждения</h2>
+          <p style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1a1a2e; margin: 20px 0;">${code}</p>
+          <p style="color: #666;">Код действителен 10 минут. Никому не сообщайте его.</p>
+        </div>
+      `,
+    }).catch((err: Error) => {
+      console.error('[OTP] Email send failed:', err.message);
+    });
   }
 
+  // Код всегда в логах для отладки (убери в продакшене)
   console.log(`[OTP] ${email} → ${code}`);
   return code;
 }
