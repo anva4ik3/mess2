@@ -5,10 +5,7 @@ plugins {
 }
 
 android {
-    // Namespace должен соответствовать твоему пакету
     namespace "com.example.messenger"
-    
-    // Фиксируем версию SDK до 34, чтобы GitHub Actions не искал более старые/новые
     compileSdk 34
 
     compileOptions {
@@ -26,25 +23,18 @@ android {
 
     defaultConfig {
         applicationId "com.example.messenger"
-        // Минимальная версия Android 5.0
         minSdk 21
         targetSdk 34
         versionCode 1
         versionName "1.0"
-        
-        // Включаем поддержку multidex для больших проектов
         multiDexEnabled true
     }
 
     buildTypes {
         release {
-            // Используем debug-ключ для тестов, чтобы сборка не требовала паролей
             signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
-        }
-        debug {
-            signingConfig signingConfigs.debug
         }
     }
 }
