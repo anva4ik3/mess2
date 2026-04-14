@@ -1,10 +1,14 @@
 FROM node:20-alpine
 WORKDIR /app
 
-COPY package*.json ./
+# Копируем package.json именно из tgback-improved, а не root
+COPY tgback-improved/package.json ./
+
 RUN npm install
 
-COPY . .
+# Копируем только исходники tgback-improved
+COPY tgback-improved/ .
+
 RUN npm run build
 
 EXPOSE 3000
