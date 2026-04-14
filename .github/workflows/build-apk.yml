@@ -11,6 +11,10 @@ jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
+    # Указываем, что ВСЕ команды ниже должны выполняться в папке с Flutter
+    defaults:
+      run:
+        working-directory: tgflutter-improved
 
     steps:
       - name: Checkout code
@@ -41,5 +45,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: messenger-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          # Путь к файлу считается от КОРНЯ репозитория, поэтому добавляем имя папки
+          path: tgflutter-improved/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
