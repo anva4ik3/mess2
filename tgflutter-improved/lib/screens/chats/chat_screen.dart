@@ -275,6 +275,130 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _showUserProfile(String userId) async {
+    try {
+      final data = await ApiService.getUserProfile(userId);
+      if (!mounted) return;
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: AppColors.bg2,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.textMuted.withOpacity(0.4), borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              AppAvatar(name: data['display_name'] ?? data['username'], url: data['avatar_url'], size: 80),
+              const SizedBox(height: 12),
+              Text(data['display_name'] ?? data['username'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('@${data['username']}', style: const TextStyle(color: AppColors.primary, fontSize: 14)),
+              if (data['bio'] != null && (data['bio'] as String).isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(data['bio'], style: const TextStyle(color: AppColors.textSecondary, fontSize: 14), textAlign: TextAlign.center),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    (data['is_online'] as bool? ?? false) ? Icons.circle : Icons.circle_outlined,
+                    size: 10,
+                    color: (data['is_online'] as bool? ?? false) ? AppColors.green : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    (data['is_online'] as bool? ?? false) ? 'В сети' : 'Не в сети',
+                    style: TextStyle(color: (data['is_online'] as bool? ?? false) ? AppColors.green : AppColors.textMuted, fontSize: 13),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  void _showGroupInfo() async {
+    try {
+      final members = await ApiService.getChatMembers(widget.chatId);
+      if (!mounted) return;
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: AppColors.bg2,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        isScrollControlled: true,
+        builder: (_) => DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          maxChildSize: 0.9,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (_, ctrl) => Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.textMuted.withOpacity(0.4), borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              AppAvatar(name: _chat!.displayName, url: _chat!.displayAvatar, size: 64),
+              const SizedBox(height: 8),
+              Text(_chat!.displayName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('${members.length} участников', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 12),
+              const Divider(color: AppColors.divider),
+              Expanded(
+                child: ListView.builder(
+                  controller: ctrl,
+                  itemCount: members.length,
+                  itemBuilder: (_, i) {
+                    final m = members[i];
+                    return ListTile(
+                      leading: AppAvatar(name: m['display_name'] ?? m['username'], url: m['avatar_url'], size: 40, showOnline: true, isOnline: m['is_online'] ?? false),
+                      title: Text(m['display_name'] ?? m['username'], style: const TextStyle(color: AppColors.textPrimary)),
+                      subtitle: Text('@${m['username']}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      trailing: m['role'] == 'owner'
+                          ? const Icon(Icons.star, color: AppColors.yellow, size: 16)
+                          : m['role'] == 'admin'
+                              ? const Icon(Icons.shield, color: AppColors.primary, size: 16)
+                              : null,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  void _forwardMessage(Message msg) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bg2,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true,
+      builder: (_) => _ForwardSheet(
+        message: msg,
+        senderName: msg.senderName,
+        onForward: (targetChatId) async {
+          Navigator.pop(context);
+          wsService.sendMessage(
+            targetChatId,
+            msg.content,
+            forwardFromUser: msg.senderName,
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Сообщение переслано'), backgroundColor: AppColors.bg3, behavior: SnackBarBehavior.floating),
+          );
+        },
+      ),
+    );
+  }
+
   void _showMessageOptions(Message msg) {
     final isOwn = msg.senderId == _me?.id;
     showModalBottomSheet(
@@ -288,6 +412,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             _OptionTile(icon: Icons.emoji_emotions_outlined, label: 'Реакция', onTap: () { Navigator.pop(context); _showReactionPicker(msg); }),
             _OptionTile(icon: Icons.reply_rounded, label: 'Ответить', onTap: () { Navigator.pop(context); setState(() => _replyTo = msg); }),
+            _OptionTile(icon: Icons.forward_rounded, label: 'Переслать', onTap: () { Navigator.pop(context); _forwardMessage(msg); }),
             _OptionTile(icon: Icons.copy_rounded, label: 'Копировать', onTap: () { Navigator.pop(context); Clipboard.setData(ClipboardData(text: msg.content)); }),
             if (isOwn) _OptionTile(icon: Icons.edit_outlined, label: 'Редактировать', onTap: () {
               Navigator.pop(context);
@@ -317,7 +442,13 @@ class _ChatScreenState extends State<ChatScreen> {
         title: _chat == null
             ? const SizedBox.shrink()
             : InkWell(
-                onTap: () {},
+                onTap: () {
+                  if (_chat!.type == 'group') {
+                    _showGroupInfo();
+                  } else if (_chat!.otherUserId != null) {
+                    _showUserProfile(_chat!.otherUserId!);
+                  }
+                },
                 child: Row(
                   children: [
                     AppAvatar(
@@ -788,6 +919,113 @@ class _OptionTile extends StatelessWidget {
       leading: Icon(icon, color: color ?? AppColors.primary, size: 22),
       title: Text(label, style: TextStyle(color: color ?? AppColors.textPrimary)),
       onTap: onTap,
+    );
+  }
+}
+
+class _ForwardSheet extends StatefulWidget {
+  final Message message;
+  final String senderName;
+  final Future<void> Function(String targetChatId) onForward;
+  const _ForwardSheet({required this.message, required this.senderName, required this.onForward});
+
+  @override
+  State<_ForwardSheet> createState() => _ForwardSheetState();
+}
+
+class _ForwardSheetState extends State<_ForwardSheet> {
+  List<dynamic> _chats = [];
+  List<dynamic> _filtered = [];
+  bool _loading = true;
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await ApiService.getChats();
+      if (!mounted) return;
+      setState(() { _chats = data; _filtered = data; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _onSearch(String q) {
+    final query = q.toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? _chats
+          : _chats.where((c) => (c['display_name'] ?? '').toString().toLowerCase().contains(query)).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.95,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (_, ctrl) => Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(width: 36, height: 4, decoration: BoxDecoration(color: AppColors.textMuted.withOpacity(0.4), borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          const Text('Переслать в...', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          Container(
+            margin: const EdgeInsets.only(bottom: 6, left: 12, right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: AppColors.bg3, borderRadius: BorderRadius.circular(10)),
+            child: Row(
+              children: [
+                Container(width: 3, height: 32, color: AppColors.primary, margin: const EdgeInsets.only(right: 10)),
+                Expanded(child: Text(widget.message.content, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: _onSearch,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'Поиск чатов...',
+                prefixIcon: Icon(Icons.search, color: AppColors.textMuted, size: 20),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : ListView.builder(
+                    controller: ctrl,
+                    itemCount: _filtered.length,
+                    itemBuilder: (_, i) {
+                      final c = _filtered[i];
+                      return ListTile(
+                        leading: AppAvatar(name: c['display_name'] ?? 'Чат', url: c['display_avatar'], size: 44),
+                        title: Text(c['display_name'] ?? 'Чат', style: const TextStyle(color: AppColors.textPrimary)),
+                        subtitle: Text(c['type'] == 'group' ? 'Группа' : 'Личный чат', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                        onTap: () => widget.onForward(c['id']),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
