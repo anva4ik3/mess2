@@ -32,57 +32,23 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     if (!valid) {
       return res.status(400).json({ error: 'Неверный или истёкший код' });
     }
-    const userResult = await query('SELECT id FROM users WHERE email = $1', [email]);
-    const isNewUser = userResult.rows.length === 0;
-
-    if (!isNewUser) {
-      const user = (await query('SELECT * FROM users WHERE email = $1', [email])).rows[0];
-      const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '30d' });
-      return res.json({ success: true, isNewUser: false, token, user: sanitizeUser(user) });
+    const userResult = await query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userResult.rows.length === 0) {
+      return res.status(403).json({ error: 'Регистрация временно недоступна' });
     }
 
-    res.json({ success: true, isNewUser: true, email });
+    const user = userResult.rows[0];
+    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '30d' });
+    res.json({ success: true, isNewUser: false, token, user: sanitizeUser(user) });
   } catch (err) {
     console.error('verify-otp error:', err);
     res.status(500).json({ error: 'Ошибка проверки кода' });
   }
 });
 
-// Регистрация нового пользователя
-router.post('/register', async (req: Request, res: Response) => {
-  try {
-    const { email, username, displayName } = req.body;
-    if (!email || !username) {
-      return res.status(400).json({ error: 'Email и username обязательны' });
-    }
-
-    if (!/^[a-z0-9_]{3,30}$/.test(username.toLowerCase())) {
-      return res.status(400).json({ error: 'Username: 3–30 символов, только буквы/цифры/подчёркивание' });
-    }
-
-    const usernameCheck = await query('SELECT id FROM users WHERE username = $1', [username.toLowerCase()]);
-    if (usernameCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Имя пользователя уже занято' });
-    }
-
-    const emailCheck = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (emailCheck.rows.length > 0) {
-      return res.status(400).json({ error: 'Email уже зарегистрирован' });
-    }
-
-    const result = await query(
-      `INSERT INTO users (email, username, display_name, is_verified, is_online, last_seen_at) 
-       VALUES ($1, $2, $3, true, true, NOW()) RETURNING *`,
-      [email, username.toLowerCase(), displayName || username]
-    );
-
-    const user = result.rows[0];
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '30d' });
-    res.json({ success: true, token, user: sanitizeUser(user) });
-  } catch (err) {
-    console.error('register error:', err);
-    res.status(500).json({ error: 'Ошибка регистрации' });
-  }
+// Регистрация временно отключена
+router.post('/register', (_req: Request, res: Response) => {
+  res.status(403).json({ error: 'Регистрация временно недоступна' });
 });
 
 // Текущий пользователь
