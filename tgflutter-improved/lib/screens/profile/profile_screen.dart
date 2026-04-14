@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../models/user.dart';
 import '../../services/api.dart';
 import '../../services/ws.dart';
 import '../../theme.dart';
 import '../../widgets/avatar.dart';
 import '../auth/email_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -53,6 +56,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _uploadAvatar() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.bg2,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            const Text('Сменить фото', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Камера', style: TextStyle(color: AppColors.textPrimary)),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Галерея', style: TextStyle(color: AppColors.textPrimary)),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            if (_user?.avatarUrl != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppColors.red),
+                title: const Text('Удалить фото', style: TextStyle(color: AppColors.red)),
+                onTap: () => Navigator.pop(context, null),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    // Удалить фото
+    if (source == null && _user?.avatarUrl != null) {
+      setState(() => _saving = true);
+      try {
+        final data = await ApiService.updateProfile(avatarUrl: '');
+        if (!mounted) return;
+        setState(() { _user = User.fromJson(data); _saving = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Фото удалено'), backgroundColor: AppColors.bg3, behavior: SnackBarBehavior.floating),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating),
+        );
+      }
+      return;
+    }
+
+    if (source == null) return;
+
+    final XFile? image = await picker.pickImage(source: source, maxWidth: 512, maxHeight: 512, imageQuality: 85);
+    if (image == null || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      final uploaded = await ApiService.uploadAvatar(File(image.path));
+      if (!mounted) return;
+      final data = await ApiService.updateProfile(avatarUrl: uploaded);
+      if (!mounted) return;
+      setState(() { _user = User.fromJson(data); _saving = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Фото обновлено'), backgroundColor: AppColors.green, behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.red, behavior: SnackBarBehavior.floating),
+      );
     }
   }
 
@@ -137,15 +221,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Positioned(
                               right: 0,
                               bottom: 0,
-                              child: Container(
-                                width: 30,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.bg1, width: 2),
+                              child: GestureDetector(
+                                onTap: _saving ? null : _uploadAvatar,
+                                child: Container(
+                                  width: 30,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppColors.bg1, width: 2),
+                                  ),
+                                  child: _saving
+                                      ? const Padding(padding: EdgeInsets.all(6), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                      : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
                                 ),
-                                child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
                               ),
                             ),
                         ],
@@ -200,19 +289,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         leading: const Icon(Icons.security_outlined, color: AppColors.primary),
                         title: const Text('Безопасность', style: TextStyle(color: AppColors.textPrimary)),
                         trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-                        onTap: () {},
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen(initialSection: 'security'))),
                       ),
                       ListTile(
                         leading: const Icon(Icons.notifications_outlined, color: AppColors.primary),
                         title: const Text('Уведомления', style: TextStyle(color: AppColors.textPrimary)),
                         trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-                        onTap: () {},
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen(initialSection: 'notifications'))),
                       ),
                       ListTile(
                         leading: const Icon(Icons.palette_outlined, color: AppColors.primary),
                         title: const Text('Оформление', style: TextStyle(color: AppColors.textPrimary)),
                         trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-                        onTap: () {},
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen(initialSection: 'appearance'))),
                       ),
                       const Divider(),
                       ListTile(
