@@ -1,0 +1,41 @@
+name: messenger
+description: Next-generation messenger
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # HTTP & WebSocket
+  http: ^1.2.0
+  web_socket_channel: ^2.4.0
+  # State management
+  provider: ^6.1.1
+  # Storage
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
+  # UI
+  cached_network_image: ^3.3.1
+  flutter_svg: ^2.0.9
+  timeago: ^3.6.0
+  image_picker: ^1.0.7
+  emoji_picker_flutter: ^2.2.0
+  # Animations
+  flutter_animate: ^4.5.0
+  # Utils
+  intl: ^0.19.0
+  uuid: ^4.3.3
+  url_launcher: ^6.2.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
