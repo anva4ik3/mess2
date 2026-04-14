@@ -5,13 +5,14 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой в GitHub
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
-    # Указываем, что ВСЕ команды ниже должны выполняться в папке с Flutter
+    
+    # Все команды выполняются внутри папки с Flutter-кодом
     defaults:
       run:
         working-directory: tgflutter-improved
@@ -39,12 +40,13 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build APK (release)
-        run: flutter build apk --release --no-shrink
+        # Флаги --no-tree-shake-icons и --no-pub помогают избежать ошибок с ресурсами и конфликтов версий
+        run: flutter build apk --release --no-shrink --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: messenger-release-apk
-          # Путь к файлу считается от КОРНЯ репозитория, поэтому добавляем имя папки
+          # Путь указывается от корня репозитория
           path: tgflutter-improved/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
