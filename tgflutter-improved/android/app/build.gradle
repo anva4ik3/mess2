@@ -5,8 +5,11 @@ plugins {
 }
 
 android {
+    // Namespace должен соответствовать твоему пакету
     namespace "com.example.messenger"
-    [span_1](start_span)compileSdk 34 // Фиксируем версию[span_1](end_span)
+    
+    // Фиксируем версию SDK до 34, чтобы GitHub Actions не искал более старые/новые
+    compileSdk 34
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -17,20 +20,31 @@ android {
         jvmTarget = '17'
     }
 
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
     defaultConfig {
         applicationId "com.example.messenger"
+        // Минимальная версия Android 5.0
         minSdk 21
         targetSdk 34
         versionCode 1
         versionName "1.0"
-        [span_2](start_span)multiDexEnabled true[span_2](end_span)
+        
+        // Включаем поддержку multidex для больших проектов
+        multiDexEnabled true
     }
 
     buildTypes {
         release {
-            [span_3](start_span)signingConfig signingConfigs.debug // Пока используем debug-ключ[span_3](end_span)
+            // Используем debug-ключ для тестов, чтобы сборка не требовала паролей
+            signingConfig signingConfigs.debug
             minifyEnabled false
             shrinkResources false
+        }
+        debug {
+            signingConfig signingConfigs.debug
         }
     }
 }
